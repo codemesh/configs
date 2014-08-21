@@ -1,0 +1,2 @@
+[fengyu@nb172 tranpo]$ unset SSH_ASKPASS
+[fengyu@nb172 tranpo]$ GIT_SSL_NO_VERIFY=true  git push origin master
