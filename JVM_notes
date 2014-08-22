@@ -1,0 +1,130 @@
+---- STATIC VIEW
+# OBJL - local object
+# OBJG - global object
+# OBJS - static object
+# OBJN - singleton object
+TYPE Thread  extend=ThreadShadow member=OSThread(_osthread) mthd=run file=thread.hpp
+TYPE JavaThread extend=Thread file=thread.hpp
+TYPE VMThread extend=NamedThread mthd=loop
+TYPE NamedThread extend=Thread
+TYPE OSThread extend=CHeapObj<mtThread> file=osThread.hpp
+FUNC java_start file=os_linux.cpp,os_solaris.cpp,...
+TYPE Monitor extend=CHeapObj<mtInternal> file=mutex.hpp
+OBJL main_thread type=JavaThread file=thread.cpp
+OBJN VMThread type=VMThread file=vmThread.hpp
+TYPE VM_Operation extend=CHeapObj<mtInternal> file=vm_operations.hpp
+TYPE Management extend=AllStatic file=management.hpp
+MACR JNI_ENTRY file=interfaceSupport.hpp
+FUNC main file=java.c
+FUNC JavaMain file=java.c
+FUNC LoadJavaVM file=java_md.c
+OBJG jni_NativeInterface file=jni.cpp
+TYPE JavaCalls extend=AllStatic file=javaCalls.hpp
+TYPE oopDesc member=markOop(_mark) file=oop.hpp
+TYPE markOop typedef=markOopDesc*
+TYPE markOopDesc extend=oopDesc file=markOop.hpp
+TYPE Handle file=handles.hpp
+TYPE java_call_t typedef=void(*)(JavaValue*,methodHandle*,JavaCallArgument*,Thread*) file=os.hpp
+TYPE MacroAssembler file=assembler.hpp
+MACR __ file=stubGenerator_x86_32.cpp
+TYPE StubCodeGenerator extend=StackObj member=MacroAssembler(_masm) file=stubCodeGenerator.hpp
+TYPE StubGenerator extend=StubCodeGenerator file=stubGenerator_x86_32.cpp
+TYPE MacroAssembler extend=Assembler file=assembler_x86.hpp
+TYPE Assembler extend=AbstractAssembler file=assembler_x86.hpp
+TYPE AbstractAssembler extend=ResourceObj mthd=pc file=assembler.hpp
+TYPE Address file=assembler_x86.hpp
+MACR THREAD file=exceptions.hpp
+MACR TRAPS file=exceptions.hpp
+FUNC parse_method file=classFileParser.cpp
+TYPE SystemDictionary extend=AllStatic file=systemDictionary.cpp
+TYPE ClassLoader extend=AllStatic file=classLoader.cpp
+TYPE ClassFileParser file=classFileParser.hpp
+TYPE methodOopDesc extend=OopDesc file=methodOop.hpp
+TYPE AbstractInterpreter extend=AllStatic file=abstractInterpreter.hpp
+TYPE TemplateInterpreterGenerator extend=AbstractInterpreterGenerator file=templateInterpreterGenerator.hpp
+TYPE AbstractInterpreterGenerator extend=StackObj file=abstractInterpreter.hpp
+TYPE InterpreterMacroAssembler extend=MacroAssembler file=interp_masm_x86_32.hpp
+TYPE TemplateInterpreter extend=AbstractInterpreter file=templateInterpreter.hpp
+TYPE TemplateInterpreter file=templateInterpreter.hpp
+TYPE Template file=templateTable.hpp
+TYPE TemplateTable extend=AllStatic file=templateTable.hpp
+TYPE Address file=assembly
+
+---- DYNAMIC VIEW
+# ACTC - action call
+# CALS - call sequence start
+# CALE - call sequence end
+# RETC - return from last unreturned call
+CALS "execute vm operation"
+ACTC VM_Operation::doit_prologue() <some_thread>
+ACTC VMThread::execute(VM_Operation) <some_thread>
+ACTC VM_Operation::evaluate() VMThread
+ACTC VM_Operation::doit() VMThread
+ACTC VM_Operation::doit_prologue()
+CALE
+CALS "set jni functions"
+ACTC Threads::create_vm() <main_thread>
+ACTC JavaThread::JavaThread() <main_thread>
+ACTC JavaThread::initialize() <main_thread>
+ACTC jni_functions() <main_thread>
+RETC
+ACTC set_jni_functions(JNINativeInterface_* ) <main_thread>
+CALE
+CALS "method invocation"
+ACTC JavaCalls::call(JavaValue*, methodHandle*, JavaCallArgument*)
+ACTC os::os_exception_wrapper(java_call_t, JavaValue, methodHandle, JavaCallArgument*, Thread)
+ACTC JavaCalls::call_helper(JavaValue, methodHandle, JavaCallArguments)
+ACTC CompileBroker::compile_method(+)
+RETC
+ACTC methodHandle::from_interpreted_entry(+)
+RETC
+ACTC StubRoutines::call_stub(+)
+CALE
+CALS "jni load class"
+ACTC jni_FindClass(JNIEnv*, const char*)
+ACTC find_class_from_class_loader(JNIEnv*, Symbol*, jboolean, Handle, Handle, jboolean, TRAPS)
+ACTC SystemDictionary::resolve_or_fail(Symbol, Handle, Handle, bool, TRAPS)
+ACTC SystemDictionary::resolve_or_null(Symbol, Handle, Handle, TRAPS)
+ACTC SystemDictionary::resolve_instance_class_or_null(Symbol*, Handle, Handle, TRAPS)
+ACTC SystemDictionary::load_instance_class(Symbol*, Handle, TRAPS)
+ACTC ClassLoader::load_classfile(Symbol*, TRAPS)
+ACTC ClassFileParser::parseClassFile(Symbol*, Handle, Handle, KlassHandle, GrowableArray<Handle>*, TempNewSymbol&, bool, TRAPS)
+ACTC ClassFileParser::parse_methods(+)
+CALE
+CALS "set interpreter entry"
+ACTC methodOopDesc::link_method(methodHandle TRAPS)
+ACTC Interpreter::entry_for_method(methodHandle)
+ACTC AbstractInterpreter::entry_for_kind(MethodKind)
+RETC
+RETC
+ACTC methodOopDesc::set_interpreter_entry(address)
+CALE
+CALS "set Interpreter::_entry_table"
+ACTC TemplateInterpreterGenerator::generate_all()
+ACTC AbstractInterpreterGenerator::generate_method_entry(AbstractInterpreter::MethodKind)
+ACTC InterpreterGenerator::generate_normal_entry(bool)
+ACTC InterpreterMacroAssembler::dispatch_next(TosState, int)
+ACTC Interpreter::dispatch_table(TosState)
+ACTC DispatchTable::table_for(TosState)
+RETC
+RETC
+ACTC InterpreterMacroAssembler::dispatch_base(TosState, address*)
+CALE
+CALS "set bytecode entry points"
+ACTC TemplateInterpreterGenerator::generate_all()
+ACTC TemplateInterpreterGenerator::set_entry_points_for_all_bytes()
+ACTC TemplateInterpreterGenerator::set_entry_points(ByteCodes::Code)
+ACTC TemplateTable::template_for(ByteCodes::Code)
+RETC
+ACTC TemplateInterpreterGenerator::set_short_entry_points(+)
+ACTC TemplateInterpreterGenerator::generate_and_dispatch(Template, TosState)
+ACTC Template::generate(InterpreterMacroAssembler*)
+RETC
+RETC
+RETC
+ACTC EntryPoint::EntryPoint(+)
+ACTC DispatchTable::set_entry(ByteCodes::Code, EntryPoint)
+CALS "set bytecode code generator"
+ACTC TemplateTable::initialize()
+ACTC TemplateTable::def(+)
+CALE
